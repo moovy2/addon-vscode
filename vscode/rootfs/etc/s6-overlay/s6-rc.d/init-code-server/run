@@ -1,4 +1,5 @@
-#!/usr/bin/with-contenv bashio
+#!/command/with-contenv bashio
+# shellcheck shell=bash
 # ==============================================================================
 # Home Assistant Community Add-on: Studio Code Server
 # Sets up code-server.
@@ -17,6 +18,9 @@ readonly -a PREVIOUS_DEFAULT_CONFIG_HASHES=(
     08d86c84a0d80720b22712e878963e90cbb34b659330dad8a823f3c5c7f0ae043d197a5e3020dd7ab4fda3625e17f794675ec074984951e7107db2488898a8d0
     5243d7664d30b5aa0c45fbe1089cccdf85c5ade17cddd97e21b3a29ccb37b20d20bdfecc141ad6e1a7aa5ea8ee61695a79a43140a2d53f9f91687bc61f7e496c
     e5106aaaff5f67a693fd49deb7dd52f1cc0f7ba542b33c99c0099bf58f1a33c789d1c5e3803dea2942540c07c734f3ca317c3cc91673aff388cb79ee7112db0b
+    b28a299111ac74cc9498f76ce2cb437b2cf5e8e7bb9388d9929347e2948bd56591bd499d5de04638553f6e12fa77c53320a046e96cffce9fa4f8c924d5c91581
+    dbe905f0935b2fea8bb5ba379bff78db9d056ea6d0965c68aa9b07938a52cbbf117186452b2b6c766aa4cf93cc3494ad91b763e8500e515e41d8cde31a3821ae
+    2212babaa9dc46d38ba239052c9c05151abe517cc8b493d0d351a96bf70c1efa4f7479f6ed0b75811429ba649906eb5657d73b0732b460e718a5c66603dcdbda
 )
 
 if bashio::config.has_value 'config_path'; then
@@ -54,19 +58,4 @@ fi
 current=$(sha512sum /data/vscode/User/settings.json|cut -d " " -f 1)
 if [[ " ${PREVIOUS_DEFAULT_CONFIG_HASHES[*]} " == *" ${current} "* ]]; then
     cp /root/.code-server/settings.json /data/vscode/User/settings.json
-fi
-
-# Workaround workspace bug for code-server.
-# https://github.com/codercom/code-server/issues/121
-if ! bashio::fs.file_exists '/data/vscode/Backups/workspaces.json'; then
-    mkdir -p /data/vscode/Backups \
-        || bashio::exit.nok "Could not create persistent storage folder."
-    cp /root/.code-server/workspaces.json /data/vscode/Backups/workspaces.json
-fi
-
-# Workaround workspace bug for code-server (same as above, part 2).
-# https://github.com/codercom/code-server/issues/121
-if ! bashio::fs.file_exists '/data/vscode/User/workspaceStorage'; then
-     mkdir -p /data/vscode/User/workspaceStorage \
-         || bashio::exit.nok "Could not create persistent storage folder."
 fi

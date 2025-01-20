@@ -1,2 +1,2 @@
-homeassistant_cli==0.9.1
-yamllint==1.26.3
+esphome==2024.12.4
+yamllint==1.35.1
