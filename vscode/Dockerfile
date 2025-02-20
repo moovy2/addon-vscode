@@ -1,4 +1,4 @@
-ARG BUILD_FROM=ghcr.io/hassio-addons/debian-base/amd64:5.2.2
+ARG BUILD_FROM=ghcr.io/hassio-addons/debian-base:7.7.1
 # hadolint ignore=DL3006
 FROM ${BUILD_FROM}
 
@@ -6,7 +6,8 @@ FROM ${BUILD_FROM}
 ENV \
     LANG=en_US.UTF-8 \
     LANGUAGE=en_US:en \
-    LC_ALL=en_US.UTF-8
+    LC_ALL=en_US.UTF-8 \
+    PIP_BREAK_SYSTEM_PACKAGES=1
 
 # Set shell
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
@@ -19,31 +20,34 @@ COPY vscode.extensions /root/vscode.extensions
 
 # Setup base system
 ARG BUILD_ARCH=amd64
+ARG CODE_SERVER_VERSION="v4.96.4"
+ARG HA_CLI_VERSION="4.37.0"
 # hadolint ignore=SC2181, DL3008
 RUN \
     apt-get update \
     \
     && apt-get install -y --no-install-recommends \
-        ack=3.4.0-1 \
-        libarchive-tools=3.4.3-2+b1 \
+        ack=3.6.0-1 \
+        libarchive-tools=3.6.2-1+deb12u2 \
         build-essential=12.9 \
-        colordiff=1.0.18-1.1 \
-        git=1:2.30.2-1 \
-        iputils-ping=3:20210202-1 \
-        locales=2.31-13+deb11u2 \
-        mariadb-client=1:10.5.12-0+deb11u1 \
-        mosquitto-clients=2.0.11-1 \
-        net-tools=1.60+git20181103.0eebece-1 \
-        nmap=7.91+dfsg1+really7.80+dfsg1-2 \
-        openssh-client=1:8.4p1-5 \
-        openssl=1.1.1k-1+deb11u1 \
-        python3-dev=3.9.2-3 \
-        python3=3.9.2-3 \
-        unzip=6.0-26 \
-        uuid-runtime=2.36.1-8 \
-        wget>=1.21-1 \
-        zip=3.0-12 \
-        zsh=5.8-6+b2 \
+        colordiff=1.0.20-1 \
+        git=1:2.39.5-0+deb12u2 \
+        iputils-ping=3:20221126-1+deb12u1 \
+        locales=2.36-9+deb12u7 \
+        mariadb-client=1:10.11.6-0+deb12u1 \
+        mosquitto-clients=2.0.11-1.2+deb12u1 \
+        net-tools=2.10-0.1 \
+        nmap=7.93+dfsg1-1 \
+        openssh-client=1:9.2p1-2+deb12u5 \
+        openssl=3.0.15-1~deb12u1 \
+        python3-dev=3.11.2-1+b1 \
+        python3=3.11.2-1+b1 \
+        unzip=6.0-28 \
+        uuid-runtime=2.38.1-5+deb12u1 \
+        wget>=1.21.3-1+b2 \
+        zip=3.0-13 \
+        zsh=5.9-4+b5 \
+        less=590-2.1~deb12u2 \
     \
     && sed -i -e 's/# en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen \
     && locale-gen \
@@ -53,14 +57,13 @@ RUN \
     && if [[ "${BUILD_ARCH}" = "aarch64" ]]; then ARCH="arm64"; fi \
     && if [[ "${BUILD_ARCH}" = "amd64" ]]; then ARCH="amd64"; fi \
     && curl -J -L -o /tmp/code.tar.gz \
-        "https://github.com/cdr/code-server/releases/download/v3.12.0/code-server-3.12.0-linux-${ARCH}.tar.gz" \
+        "https://github.com/coder/code-server/releases/download/${CODE_SERVER_VERSION}/code-server-${CODE_SERVER_VERSION#v}-linux-${ARCH}.tar.gz" \
     && mkdir -p /usr/local/lib/code-server \
     && tar zxvf \
         /tmp/code.tar.gz \
         --strip 1 -C /usr/local/lib/code-server \
     \
     && ln -s /usr/local/lib/code-server/bin/code-server /usr/local/bin/code-server \
-    && ln -s /usr/local/lib/code-server/bin/code-server /usr/local/bin/code \
     \
     && mkdir -p /root/.code-server/extensions \
     && uuid=$(uuidgen) \
@@ -77,26 +80,26 @@ RUN \
             -H "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.130 Safari/537.36" \
             -H "x-market-user-id: ${uuid}" \
             "https://marketplace.visualstudio.com/_apis/public/gallery/publishers/${vendor}/vsextensions/${slug}/${version}/vspackage"; \
-        mkdir -p "/root/.code-server/extensions/${extention}-${version}"; \
+        mkdir -p "/usr/local/lib/code-server/lib/vscode/extensions/${extention}-${version}"; \
         bsdtar --strip-components=1 -xf "/tmp/${extention}-${version}.vsix" \
-                    -C "/root/.code-server/extensions/${extention}-${version}" extension; \
+                    -C "/usr/local/lib/code-server/lib/vscode/extensions/${extention}-${version}" extension; \
         [ $? -ne 0 ] && exit 1; \
         sleep 1; \
     done < /root/vscode.extensions \
-    && ls -la /root/.code-server/extensions/ \
+    && ls -la /usr/local/lib/code-server/lib/vscode/extensions/ \
     \
     && curl -L -s -o /usr/bin/ha \
-        "https://github.com/home-assistant/cli/releases/download/4.14.0/ha_${BUILD_ARCH}" \
+        "https://github.com/home-assistant/cli/releases/download/${HA_CLI_VERSION}/ha_${BUILD_ARCH}" \
     && chmod a+x /usr/bin/ha \
     \
     && git clone --branch master --single-branch --depth 1 \
-        "git://github.com/robbyrussell/oh-my-zsh.git" ~/.oh-my-zsh \
+        "https://github.com/robbyrussell/oh-my-zsh.git" ~/.oh-my-zsh \
     \
     && git clone --branch master --single-branch --depth 1 \
-        "git://github.com/zsh-users/zsh-autosuggestions" \
+        "https://github.com/zsh-users/zsh-autosuggestions" \
         ~/.oh-my-zsh/custom/plugins/zsh-autosuggestions \
     && git clone --branch master --single-branch --depth 1 \
-        "git://github.com/zsh-users/zsh-syntax-highlighting.git" \
+        "https://github.com/zsh-users/zsh-syntax-highlighting.git" \
         ~/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting \
     \
     && sed -i -e "s#bin/bash#bin/zsh#" /etc/passwd \
@@ -107,8 +110,8 @@ RUN \
     && pip3 install --no-cache-dir -r /tmp/requirements.txt \
     \
     && apt-get purge -y --auto-remove \
-        bsdtar \
         build-essential \
+        libarchive-tools \
         python3-dev \
         uuid-runtime \
     \
@@ -118,12 +121,17 @@ RUN \
         -exec rm -rf '{}' + \
     \
     && rm -fr \
+        /root/.cache \
         /tmp/* \
         /var/{cache,log}/* \
         /var/lib/apt/lists/*
 
 # Copy root filesystem
 COPY rootfs /
+
+# Health check
+HEALTHCHECK \
+    CMD curl --fail http://127.0.0.1:1337/healthz || exit 1
 
 # Build arguments
 ARG BUILD_ARCH

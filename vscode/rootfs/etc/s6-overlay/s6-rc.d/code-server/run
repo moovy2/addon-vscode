@@ -1,12 +1,13 @@
-#!/usr/bin/with-contenv bashio
+#!/command/with-contenv bashio
+# shellcheck shell=bash
 # ==============================================================================
 # Home Assistant Community Add-on: Studio Code Server
-# Runs the code server
+# Runs the code-server
 # ==============================================================================
 declare -a options
 declare config_path
 
-bashio::log.info 'Starting the code server...'
+bashio::log.info 'Starting code-server...'
 
 config_path="/config"
 if bashio::config.has_value 'config_path'; then
@@ -15,7 +16,6 @@ fi
 
 options+=(--port 1337)
 options+=(--user-data-dir "/data/vscode")
-options+=(--extra-builtin-extensions-dir "/root/.code-server/extensions/")
 options+=(--extensions-dir "/data/vscode/extensions")
 options+=(--host 0.0.0.0)
 options+=(--disable-telemetry)
